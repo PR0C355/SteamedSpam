@@ -1,0 +1,9 @@
+text,label,label_num,source,type
+test1,ham,0,source1,sms
+test2,spam,1,source2,sms
+test3,ham,0,source3,sms
+test4,spam,1,source4,sms
+test5,ham,0,source5,sms
+test6,spam,1,source6,sms
+test7,ham,0,source7,sms
+test8,spam,1,source8,sms
