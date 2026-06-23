@@ -5,6 +5,11 @@ import numpy as np
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.layers import TextVectorization
+import scipy.sparse as sp
+from enum import Enum
+
 
 
 
@@ -60,7 +65,7 @@ class DataLoader:
         """Process the loaded data and prepare features."""
         # Extract relevant columns
         self.raw_text = self.data["text"]
-        preprocessed_text = self.data["text"].apply(self._preprocess_text)
+        preprocessed_text = self.data["text"]#.apply(self._preprocess_text)
         self.cleaned_text = np.asarray(preprocessed_text)
         self.is_spam = self.data["label_num"]
         self.text_class = self.data["classification"]
@@ -117,6 +122,73 @@ class DataPaths:
 
     SPAM_DATA = "classified_spam.csv"
     SPAM_SALES_DATA = "classified_spam+sales.csv"
+    
+class DataEncodings(Enum):
+    COUNT = "count"
+    TFIDF = "tfidf"
+    WORD2VEC = "word2vec"
+    TOKENIZE = "tokenize"
+    
+class DataEncoder:
+    """Class to encode data for training."""
+    
+    def __init__(self, vocab_size=2000):
+        self.vocab_size = vocab_size
+        
+    def _sparse_tensor_to_csr_matrix(self, sparse_tensor):
+        indices = sparse_tensor.indices
+        values = sparse_tensor.values
+        shape = sparse_tensor.dense_shape
+        return sp.csr_matrix((values, (indices[:, 0], indices[:, 1])), shape=shape)
+
+    def vectorize_text_data(self, data, encoding: DataEncodings = DataEncodings.COUNT, sparse = False, csr_matrix=False):
+        """
+        Vectorize text data using TensorFlow's TextVectorization layer.
+        Args:
+            data (array-like): Text data to vectorize
+        Returns:
+            tf.keras.layers.TextVectorization: Vectorized text data
+        """
+        encoder = None
+        if encoding == DataEncodings.COUNT:
+            encoder = TextVectorization(
+                max_tokens=self.vocab_size,
+                ngrams=(1,1),
+                output_mode="count",
+                sparse=sparse
+            )
+        elif encoding == DataEncodings.TFIDF:
+            encoder = TextVectorization(
+                max_tokens=self.vocab_size,
+                output_mode="tf_idf",
+                sparse=sparse
+            )
+            
+        elif encoding == DataEncodings.TOKENIZE:
+            encoder = TextVectorization(
+                max_tokens=self.vocab_size,
+                output_mode="int",
+                sparse=sparse
+            )
+        encoder.adapt(data)
+        if sparse and csr_matrix:
+            return self._sparse_tensor_to_csr_matrix(encoder(data))
+        return encoder(data)
+
+
+def cross_validate_split(data, labels, test_size=0.2):
+    """
+    Split data into training and testing sets.
+    Args:
+        data (array-like): Feature data
+        labels (array-like): Labels
+        test_size (float): Proportion of the dataset to include in the test split
+    Returns:
+        tuple: (X_train, X_test, Y_train, Y_test)
+    """
+    return train_test_split(data, labels, test_size=test_size, random_state=10)
+
+
 
 
 # Usage example:
